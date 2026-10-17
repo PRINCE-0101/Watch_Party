@@ -1,0 +1,28 @@
+{
+  "environment": "Linux / Python 3.12.14 / aiohttp / TCP loopback",
+  "clients": 10,
+  "samples": 60,
+  "metric": "host send to receipt by every one of 10 clients; same-process local TCP",
+  "median_ms": 1.55,
+  "p95_ms": 2.74,
+  "max_ms": 3.42,
+  "checks": [
+    "10 concurrent WebSocket clients joined one room",
+    "Non-host playback rejected",
+    "60 seek controls reached all 10 clients",
+    "Late join receives advanced authoritative timeline",
+    "Reconnect token restores member identity",
+    "Duplicate action ID does not duplicate playlist entry",
+    "Concurrent chat actions preserved",
+    "Changing a vote replaces the prior vote",
+    "Explicit host transfer succeeds",
+    "Disconnected host replaced after grace period (clock advanced in test)",
+    "Malformed input rejected without losing the socket"
+  ],
+  "limitations": [
+    "Not a LAN or internet measurement",
+    "No browser decode/render included",
+    "Actual media drift requires multi-browser measurement",
+    "Server data is in memory and resets on restart"
+  ]
+}

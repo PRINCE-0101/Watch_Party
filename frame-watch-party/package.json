@@ -1,0 +1,1 @@
+{"name":"frame-watch-party","version":"1.0.0","private":true,"type":"module","scripts":{"test:sync":"node --test tests/sync.test.js"}}
