@@ -1,27 +1,35 @@
 """Frame: a single-process, server-authoritative watch party server."""
-import asyncio, json, os, secrets, string, time, socket as pysocket, ipaddress
+import asyncio, json, os, secrets, string, time, socket as pysocket, ipaddress, re
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin, quote
+from html import unescape
 from aiohttp import web, WSMsgType, ClientSession, ClientTimeout
 
 ROOT = Path(__file__).parent
 rooms = {}
 now = lambda: time.time() * 1000
+MEDIA_EXTS = ('.mp4','.webm','.m4v','.mov','.ogv','.ogg')
+HLS_TYPES = {'application/vnd.apple.mpegurl','application/x-mpegurl','audio/mpegurl','audio/x-mpegurl'}
+REDIRECTS = {301,302,303,307,308}
+
 
 def fail(message): raise ValueError(message)
 def clean(value, limit=500): return str(value or '').strip()[:limit]
 def media(value):
-    value=clean(value,2000)
-    if urlparse(value).scheme not in ('https','http'): fail('Use a direct HTTP(S) video URL.')
+    value=clean(value,4000)
+    if urlparse(value).scheme not in ('https','http'): fail('Use a public HTTP(S) video URL.')
     return value
+
 
 def timeline(room):
     p=room['playback'].copy()
     if p['playing']: p['position']+=(now()-p['updated'])/1000
     return p
 
+
 def snapshot(room):
     return {'type':'state','code':room['code'],'revision':room['revision'],'serverTime':now(),'host':room['host'],'playback':timeline(room),'members':[{'id':k,'name':v['name'],'online':v['ws'] is not None} for k,v in room['members'].items()],'playlist':room['playlist'],'messages':room['messages'],'poll':room['poll']}
+
 
 async def broadcast(room,event=None):
     data=json.dumps(event or snapshot(room))
@@ -31,6 +39,7 @@ async def broadcast(room,event=None):
             try: await ws.send_str(data)
             except ConnectionError: pass
 
+
 def new_room():
     while True:
         code=''.join(secrets.choice(string.ascii_uppercase+string.digits) for _ in range(6))
@@ -38,11 +47,13 @@ def new_room():
     r={'code':code,'host':None,'revision':0,'members':{},'playlist':[],'messages':[],'poll':None,'playback':{'url':'','title':'Choose something to watch','position':0,'playing':False,'updated':now()},'touched':now()}
     rooms[code]=r; return r
 
+
 async def public_http_url(value):
     """Allow public HTTP(S) targets only; block localhost/private/link-local destinations."""
     u=urlparse(value)
     if u.scheme not in ('http','https') or not u.hostname or u.username or u.password: fail('Invalid public video URL.')
     if u.port not in (None,80,443): fail('Only standard HTTP/HTTPS ports are supported.')
+    if u.hostname.lower() in ('localhost','localhost.localdomain'): fail('Private or local video addresses are not allowed.')
     loop=asyncio.get_running_loop()
     try: infos=await loop.getaddrinfo(u.hostname,u.port or (443 if u.scheme=='https' else 80),type=pysocket.SOCK_STREAM)
     except pysocket.gaierror: fail('Could not resolve the video host.')
@@ -51,42 +62,185 @@ async def public_http_url(value):
         if not ip.is_global: fail('Private or local video addresses are not allowed.')
     return value
 
-async def media_proxy(request):
-    """Same-origin streaming bridge. Forwards Range so HTML5 seek/play works on more public MP4 hosts."""
-    target=clean(request.query.get('url'),4000)
-    try: await public_http_url(target)
-    except ValueError as e: raise web.HTTPBadRequest(text=str(e))
-    headers={'User-Agent':'Mozilla/5.0 FrameWatchParty/1.0','Accept':'video/*,*/*;q=0.8'}
-    if request.headers.get('Range'): headers['Range']=request.headers['Range']
-    timeout=ClientTimeout(total=None,connect=12,sock_read=45)
-    session=ClientSession(timeout=timeout)
+
+async def open_public(session, target, headers=None, max_redirects=5):
+    """GET a public URL while validating each redirect target before following it."""
+    current=target
+    for _ in range(max_redirects+1):
+        await public_http_url(current)
+        response=await session.get(current,headers=headers or {},allow_redirects=False)
+        if response.status not in REDIRECTS:
+            return response, current
+        location=response.headers.get('Location')
+        response.release()
+        if not location: fail('Video host returned an invalid redirect.')
+        current=urljoin(current,location)
+    fail('Too many redirects from the video host.')
+
+
+async def stream_upstream(request, upstream, session, *, cache='public, max-age=300'):
+    ctype=upstream.headers.get('Content-Type','application/octet-stream').split(';')[0].lower()
+    out_headers={'Content-Type':ctype,'Accept-Ranges':upstream.headers.get('Accept-Ranges','bytes'),'Cache-Control':cache}
+    for h in ('Content-Range','Content-Length','ETag','Last-Modified'):
+        if h in upstream.headers: out_headers[h]=upstream.headers[h]
+    response=web.StreamResponse(status=upstream.status,headers=out_headers)
+    await response.prepare(request)
     try:
-        upstream=await session.get(target,headers=headers,allow_redirects=True,max_redirects=5)
-        # Validate the final redirect destination too.
-        await public_http_url(str(upstream.url))
+        async for chunk in upstream.content.iter_chunked(256*1024): await response.write(chunk)
+    except (ConnectionResetError,asyncio.CancelledError): pass
+    finally:
+        upstream.release(); await session.close()
+    return response
+
+
+async def proxy_target(request, target, referer=None, *, broad=False):
+    headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/155 Safari/537.36','Accept':'video/*,audio/*,*/*;q=0.8'}
+    if request.headers.get('Range'): headers['Range']=request.headers['Range']
+    if referer: headers['Referer']=referer
+    timeout=ClientTimeout(total=None,connect=12,sock_read=45)
+    session=ClientSession(timeout=timeout,trust_env=False)
+    try:
+        upstream,_=await open_public(session,target,headers)
         if upstream.status>=400:
-            text=await upstream.text(errors='ignore'); upstream.release(); await session.close()
-            raise web.HTTPBadGateway(text=f'Video host returned HTTP {upstream.status}. {text[:120]}')
-        ctype=upstream.headers.get('Content-Type','video/mp4').split(';')[0]
-        if not (ctype.startswith('video/') or ctype in ('application/octet-stream','binary/octet-stream')):
-            upstream.release(); await session.close(); raise web.HTTPBadGateway(text=f'The URL returned {ctype}, not a video file.')
-        out_headers={'Content-Type':ctype,'Accept-Ranges':upstream.headers.get('Accept-Ranges','bytes'),'Cache-Control':'public, max-age=300'}
-        for h in ('Content-Range','Content-Length','ETag','Last-Modified'):
-            if h in upstream.headers: out_headers[h]=upstream.headers[h]
-        response=web.StreamResponse(status=upstream.status,headers=out_headers)
-        await response.prepare(request)
-        try:
-            async for chunk in upstream.content.iter_chunked(256*1024): await response.write(chunk)
-        except (ConnectionResetError,asyncio.CancelledError): pass
-        finally:
-            upstream.release(); await session.close()
-        return response
+            status=upstream.status; upstream.release(); await session.close(); raise web.HTTPBadGateway(text=f'Video host returned HTTP {status}.')
+        ctype=upstream.headers.get('Content-Type','application/octet-stream').split(';')[0].lower()
+        allowed=ctype.startswith(('video/','audio/')) or ctype in ('application/octet-stream','binary/octet-stream')
+        if broad: allowed=allowed or ctype.startswith('application/')
+        if not allowed:
+            upstream.release(); await session.close(); raise web.HTTPBadGateway(text=f'The resolved URL returned {ctype}, not playable media.')
+        return await stream_upstream(request,upstream,session)
     except web.HTTPException:
         if not session.closed: await session.close()
         raise
+    except ValueError as e:
+        if not session.closed: await session.close()
+        raise web.HTTPBadRequest(text=str(e))
     except Exception as e:
         if not session.closed: await session.close()
         raise web.HTTPBadGateway(text=f'Could not fetch this video: {type(e).__name__}')
+
+
+async def media_proxy(request):
+    """Same-origin streaming bridge for direct public media URLs."""
+    target=clean(request.query.get('url'),4000)
+    return await proxy_target(request,target)
+
+
+def extract_media_candidates(html_text, base_url):
+    """Find direct media references exposed by ordinary public HTML pages."""
+    text=unescape(html_text).replace('\\/','/')
+    candidates=[]
+    patterns=[
+        r'<(?:video|source)[^>]+src=["\']([^"\']+)["\']',
+        r'<meta[^>]+(?:property|name)=["\'](?:og:video(?::secure_url)?|twitter:player:stream)["\'][^>]+content=["\']([^"\']+)["\']',
+        r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:property|name)=["\'](?:og:video(?::secure_url)?|twitter:player:stream)["\']',
+        r'https?://[^"\'<>\s]+?\.(?:mp4|webm|m4v|mov|ogv)(?:\?[^"\'<>\s]*)?',
+    ]
+    for pattern in patterns:
+        for match in re.findall(pattern,text,re.I):
+            value=match if isinstance(match,str) else match[0]
+            value=value.strip()
+            if value.startswith('//'): value='https:'+value
+            absolute=urljoin(base_url,value)
+            if absolute not in candidates: candidates.append(absolute)
+    def score(u):
+        path=urlparse(u).path.lower()
+        return (0 if path.endswith(MEDIA_EXTS) else 1, len(u))
+    return sorted(candidates,key=score)[:30]
+
+
+async def resolve_page_media(target):
+    """Resolve a public webpage to a direct media URL when the page exposes one."""
+    headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/155 Safari/537.36','Accept':'text/html,video/*,*/*;q=0.8'}
+    timeout=ClientTimeout(total=20,connect=10,sock_read=10)
+    session=ClientSession(timeout=timeout,trust_env=False)
+    try:
+        upstream,final_url=await open_public(session,target,headers)
+        if upstream.status>=400:
+            status=upstream.status; upstream.release(); raise ValueError(f'Web page returned HTTP {status}.')
+        ctype=upstream.headers.get('Content-Type','').split(';')[0].lower()
+        if ctype.startswith(('video/','audio/')) or ctype in ('application/octet-stream','binary/octet-stream'):
+            upstream.release(); return final_url,None
+        if ctype in HLS_TYPES or urlparse(final_url).path.lower().endswith('.m3u8'):
+            upstream.release(); return final_url,None
+        if ctype not in ('text/html','application/xhtml+xml',''):
+            upstream.release(); raise ValueError(f'This link returned {ctype or "unknown content"}, not a webpage/video.')
+        raw=await upstream.content.read(2_000_000); upstream.release()
+        text=raw.decode(upstream.charset or 'utf-8',errors='ignore')
+        candidates=extract_media_candidates(text,final_url)
+        if not candidates: raise ValueError('No public HTML5 video was found on this page. YouTube/Vimeo links are supported directly; DRM/login-only sites are not.')
+        for candidate in candidates[:8]:
+            try:
+                probe,final_candidate=await open_public(session,candidate,{'User-Agent':headers['User-Agent'],'Accept':'video/*,*/*;q=0.8','Referer':final_url})
+                ptype=probe.headers.get('Content-Type','').split(';')[0].lower(); status=probe.status; probe.release()
+                if status<400 and (ptype.startswith(('video/','audio/')) or ptype in ('application/octet-stream','binary/octet-stream')):
+                    return final_candidate,final_url
+            except Exception:
+                continue
+        raise ValueError('The page mentions video, but it does not expose a public browser-playable media file.')
+    finally:
+        await session.close()
+
+
+async def media_smart(request):
+    """Accept a direct media URL or a normal public webpage that exposes HTML5 video."""
+    target=clean(request.query.get('url'),4000)
+    try:
+        await public_http_url(target)
+        resolved,referer=await resolve_page_media(target)
+        if urlparse(resolved).path.lower().endswith('.m3u8'):
+            raise web.HTTPUnsupportedMediaType(text='This is an HLS stream. Paste the .m3u8 URL directly so the HLS player can be used.')
+        return await proxy_target(request,resolved,referer)
+    except web.HTTPException: raise
+    except ValueError as e: raise web.HTTPBadGateway(text=str(e))
+
+
+def proxied_hls_url(target):
+    return '/media-hls?url='+quote(target,safe='')
+
+
+def rewrite_hls(text, base_url):
+    output=[]
+    uri_re=re.compile(r'URI="([^"]+)"',re.I)
+    for raw in text.splitlines():
+        line=raw.strip()
+        if not line:
+            output.append(raw); continue
+        if line.startswith('#'):
+            def repl(match): return 'URI="'+proxied_hls_url(urljoin(base_url,match.group(1)))+'"'
+            output.append(uri_re.sub(repl,raw)); continue
+        output.append(proxied_hls_url(urljoin(base_url,line)))
+    return '\n'.join(output)+'\n'
+
+
+async def media_hls(request):
+    """Proxy HLS manifests and rewrite segment/key URIs through the same safe bridge."""
+    target=clean(request.query.get('url'),4000)
+    headers={'User-Agent':'Mozilla/5.0 FrameWatchParty/2.0','Accept':'*/*'}
+    if request.headers.get('Range'): headers['Range']=request.headers['Range']
+    timeout=ClientTimeout(total=None,connect=12,sock_read=45)
+    session=ClientSession(timeout=timeout,trust_env=False)
+    try:
+        upstream,final_url=await open_public(session,target,headers)
+        if upstream.status>=400:
+            status=upstream.status; upstream.release(); await session.close(); raise web.HTTPBadGateway(text=f'HLS host returned HTTP {status}.')
+        ctype=upstream.headers.get('Content-Type','').split(';')[0].lower()
+        is_manifest=ctype in HLS_TYPES or urlparse(final_url).path.lower().endswith(('.m3u8','.m3u'))
+        if is_manifest:
+            raw=await upstream.content.read(3_000_000); upstream.release(); await session.close()
+            text=raw.decode('utf-8',errors='ignore')
+            return web.Response(text=rewrite_hls(text,final_url),content_type='application/vnd.apple.mpegurl',headers={'Cache-Control':'no-cache','Access-Control-Allow-Origin':'*'})
+        return await stream_upstream(request,upstream,session)
+    except web.HTTPException:
+        if not session.closed: await session.close()
+        raise
+    except ValueError as e:
+        if not session.closed: await session.close()
+        raise web.HTTPBadRequest(text=str(e))
+    except Exception as e:
+        if not session.closed: await session.close()
+        raise web.HTTPBadGateway(text=f'Could not fetch this HLS resource: {type(e).__name__}')
+
 
 async def socket(request):
     origin=request.headers.get('Origin'); allowed=os.environ.get('ALLOWED_ORIGINS','').split(',')
@@ -171,6 +325,7 @@ async def socket(request):
         if room and member and member['ws'] is ws: member['ws']=None; member['left']=now(); await broadcast(room)
     return ws
 
+
 async def maintenance(app):
     async def loop():
         while True:
@@ -188,9 +343,18 @@ async def maintenance(app):
     try: await task
     except asyncio.CancelledError: pass
 
+
 async def index(request): return web.FileResponse(ROOT/'dist/index.html')
 async def health(request): return web.json_response({'ok':True,'rooms':len(rooms)})
 def make_app():
     app=web.Application(client_max_size=8192)
-    app.router.add_get('/ws',socket); app.router.add_get('/health',health); app.router.add_get('/media-proxy',media_proxy); app.router.add_get('/',index); app.router.add_static('/',ROOT/'dist',show_index=False); app.cleanup_ctx.append(maintenance); return app
+    app.router.add_get('/ws',socket)
+    app.router.add_get('/health',health)
+    app.router.add_get('/media-proxy',media_proxy)
+    app.router.add_get('/media-smart',media_smart)
+    app.router.add_get('/media-hls',media_hls)
+    app.router.add_get('/',index)
+    app.router.add_static('/',ROOT/'dist',show_index=False)
+    app.cleanup_ctx.append(maintenance)
+    return app
 if __name__=='__main__': web.run_app(make_app(),host=os.getenv('HOST','0.0.0.0'),port=int(os.getenv('PORT','8000')))
