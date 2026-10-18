@@ -1,2 +1,2 @@
-import './enhancements-v3.js';
 import './rtc.js';
+import './enhancements-v3.js';
