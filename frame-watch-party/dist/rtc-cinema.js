@@ -14,7 +14,7 @@ if(movieScreen&&playButton&&liveGrid){
  .rtc-cinema-bubble.local video{transform:scaleX(-1)}
  .rtc-cinema-bubble.camera-off video{opacity:.12}
  .rtc-cinema-name{position:absolute;left:6px;bottom:5px;background:#08080bd9;border-radius:999px;padding:4px 7px;font-size:9px;color:#f3f2f0;max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
- @media(max-width:700px){#rtcCinemaOverlay{right:8px;bottom:8px;max-width:95%;gap:5px}.rtc-cinema-bubble{width:92px}.rtc-cinema-bubble.spotlight{width:145px}}
+ @media(max-width:700px){#rtcCinemaOverlay{right:8px;bottom:8px;max-width:95%;gap:5px}.rtc-cinema-bubble{width:92px}.rtc-cinema-bubble.spotlight{width:145px}.rtc-host-tools{opacity:1}}
  `;
  document.head.appendChild(style);
  const overlay=document.createElement('div');overlay.id='rtcCinemaOverlay';overlay.hidden=true;movieScreen.appendChild(overlay);
@@ -38,8 +38,6 @@ if(movieScreen&&playButton&&liveGrid){
   }
   for(const bubble of [...overlay.children])if(!seen.has(bubble.dataset.cinemaPeer))bubble.remove();
  }
- // When live cameras exist, fullscreen the whole movie container rather than only the video
- // so the cinema bubbles remain visible in fullscreen too.
  fullscreenButton?.addEventListener('click',e=>{if(!liveGrid.querySelector('.rtc-tile[data-peer]'))return;e.preventDefault();e.stopImmediatePropagation();movieScreen.requestFullscreen?.().catch(()=>{})},true);
  new MutationObserver(mirrorTiles).observe(playButton,{childList:true,characterData:true,subtree:true});
  new MutationObserver(mirrorTiles).observe(liveGrid,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
