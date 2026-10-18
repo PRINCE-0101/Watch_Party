@@ -6,6 +6,7 @@ COPY server.py .
 COPY server_v3.py .
 COPY server_v4.py .
 COPY server_v5.py .
+RUN python -m py_compile server_v3.py server_v5.py
 COPY dist ./dist
 ENV PORT=8000
 EXPOSE 8000
