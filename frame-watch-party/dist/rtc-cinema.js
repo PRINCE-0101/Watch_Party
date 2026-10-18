@@ -3,6 +3,7 @@
 const movieScreen=document.querySelector('.screen');
 const playButton=document.getElementById('play');
 const liveGrid=document.getElementById('rtcGrid');
+const fullscreenButton=document.getElementById('fullscreen');
 if(movieScreen&&playButton&&liveGrid){
  const style=document.createElement('style');
  style.textContent=`
@@ -37,6 +38,9 @@ if(movieScreen&&playButton&&liveGrid){
   }
   for(const bubble of [...overlay.children])if(!seen.has(bubble.dataset.cinemaPeer))bubble.remove();
  }
+ // When live cameras exist, fullscreen the whole movie container rather than only the video
+ // so the cinema bubbles remain visible in fullscreen too.
+ fullscreenButton?.addEventListener('click',e=>{if(!liveGrid.querySelector('.rtc-tile[data-peer]'))return;e.preventDefault();e.stopImmediatePropagation();movieScreen.requestFullscreen?.().catch(()=>{})},true);
  new MutationObserver(mirrorTiles).observe(playButton,{childList:true,characterData:true,subtree:true});
  new MutationObserver(mirrorTiles).observe(liveGrid,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
  setInterval(mirrorTiles,700);mirrorTiles();
