@@ -1,0 +1,189 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
+
+:root{
+  --bg:#090806;
+  --panel:#11100d;
+  --panel-2:#17140f;
+  --line:#3a3325;
+  --muted:#aaa08e;
+  --lime:#e7c76d;
+  --gold:#e7c76d;
+  --gold-soft:#9c8448;
+  --text:#f7f1e5;
+}
+
+body.cinema-theme{
+  background:
+    radial-gradient(circle at 50% -20%,rgba(231,199,109,.12),transparent 34%),
+    radial-gradient(circle at 8% 55%,rgba(151,101,37,.08),transparent 28%),
+    linear-gradient(180deg,#090806 0%,#0c0a08 55%,#080706 100%);
+  color:var(--text);
+}
+
+body.cinema-theme header{
+  max-width:1600px;
+  padding:16px 3.5%;
+  position:sticky;
+  top:0;
+  z-index:60;
+  background:rgba(8,7,5,.88);
+  backdrop-filter:blur(18px);
+  border-bottom:1px solid rgba(231,199,109,.18);
+}
+body.cinema-theme .brand{font-family:'Playfair Display',serif;color:#f5df9a;font-size:30px;letter-spacing:.2px}
+body.cinema-theme .brand strong{letter-spacing:-.8px}
+body.cinema-theme .brand span{color:#e7c76d}
+body.cinema-theme nav{gap:28px}
+body.cinema-theme nav a{position:relative;color:#bdb4a4}
+body.cinema-theme nav a:first-child{color:#f6e3a4}
+body.cinema-theme nav a:first-child:after{content:'';position:absolute;left:0;right:0;bottom:-18px;height:1px;background:#e7c76d}
+body.cinema-theme .status{border:1px solid rgba(231,199,109,.2);border-radius:999px;padding:8px 12px;background:#12100c}
+body.cinema-theme .status i.on{background:#e7c76d;box-shadow:0 0 12px rgba(231,199,109,.7)}
+
+body.cinema-theme main{max-width:1600px;padding:0 3.5% 50px}
+body.cinema-theme .hero{display:none}
+body.cinema-theme #watch{padding-top:22px}
+body.cinema-theme .section-heading{margin:0 0 16px;padding:0 2px}
+body.cinema-theme .section-heading .eyebrow{color:#b89b57}
+body.cinema-theme h2,body.cinema-theme .now h3,body.cinema-theme .card-title{font-family:'Playfair Display',serif}
+body.cinema-theme h2{font-size:28px;color:#f4e7c2}
+body.cinema-theme .pill{border-color:#51452e;background:#14110d;color:#d8c89e}
+
+body.cinema-theme .lobby{
+  background:linear-gradient(180deg,#15120e,#100e0b);
+  border:1px solid #3d3424;
+  border-radius:14px;
+  box-shadow:0 18px 45px #0005;
+}
+body.cinema-theme input,body.cinema-theme select{background:#0e0c0a;border-color:#3c3427;color:#f3ecde}
+body.cinema-theme button,body.cinema-theme .button{background:#191611;border-color:#413827;color:#f4ebd9}
+body.cinema-theme button:hover,body.cinema-theme .button:hover{border-color:#e7c76d;box-shadow:0 0 0 1px rgba(231,199,109,.15)}
+body.cinema-theme button.primary,body.cinema-theme .primary{background:linear-gradient(135deg,#f0d782,#c8a754);border-color:#e7c76d;color:#211a0e}
+
+body.cinema-theme .room-grid.cinema-shell{
+  display:grid;
+  grid-template-columns:250px minmax(0,1fr) 330px;
+  gap:14px;
+  align-items:start;
+}
+body.cinema-theme .cinema-rail,
+body.cinema-theme .chat,
+body.cinema-theme .cinema-card{
+  background:linear-gradient(180deg,rgba(18,16,12,.96),rgba(11,10,8,.98));
+  border:1px solid rgba(231,199,109,.18);
+  box-shadow:0 18px 46px rgba(0,0,0,.34);
+}
+body.cinema-theme .cinema-rail{border-radius:16px;padding:14px;position:sticky;top:84px;max-height:calc(100vh - 104px);overflow:auto}
+body.cinema-theme .cinema-rail-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:3px 2px 13px;border-bottom:1px solid rgba(231,199,109,.14);margin-bottom:12px}
+body.cinema-theme .cinema-rail-head h3{font-family:'Playfair Display',serif;margin:0;color:#f4e4b8;font-size:18px}
+body.cinema-theme .cinema-live-dot{font-size:9px;color:#d8bd72;letter-spacing:.08em;text-transform:uppercase}
+body.cinema-theme .cinema-rail-note{font-size:10px;line-height:1.55;color:#938a7b;margin:0 0 12px}
+
+body.cinema-theme .room-grid.cinema-shell>.cinema-center{min-width:0}
+body.cinema-theme .screen{
+  border:1px solid #4a3e29;
+  border-radius:16px 16px 0 0;
+  background:#050505;
+  box-shadow:0 22px 60px #0008,0 0 0 1px rgba(231,199,109,.05) inset;
+}
+body.cinema-theme .screen:after{content:'';position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 -100px 100px -80px rgba(0,0,0,.75)}
+body.cinema-theme #emptyScreen{background:radial-gradient(circle at 50% 45%,#3a2b16,#12100c 62%,#090807)}
+body.cinema-theme .play-icon{color:#ecd683;border-color:#8d7744}
+body.cinema-theme .player-bar{background:#0d0c0a;border-color:#4a3e29;border-top:0;border-radius:0 0 16px 16px;padding:11px 14px}
+body.cinema-theme .player-bar button{color:#f4e5be}
+body.cinema-theme #seek{accent-color:#e7c76d}
+body.cinema-theme .now{padding:17px 4px 8px}
+body.cinema-theme .now .eyebrow{color:#8f836d}
+body.cinema-theme .now h3{color:#f4e6bf;font-size:19px}
+body.cinema-theme .room-actions{display:flex;justify-content:flex-end;margin:0 0 10px}
+body.cinema-theme .room-actions:empty{display:none}
+body.cinema-theme .subtabs{display:none}
+
+body.cinema-theme .cinema-dashboard{display:grid;grid-template-columns:1.25fr 1fr .8fr;gap:12px;margin-top:12px}
+body.cinema-theme .cinema-card{border-radius:14px;padding:14px;min-width:0}
+body.cinema-theme .cinema-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+body.cinema-theme .card-title{font-size:16px;color:#f3dfa4}
+body.cinema-theme .card-kicker{font-size:9px;color:#8e816d;text-transform:uppercase;letter-spacing:.12em}
+body.cinema-theme .cinema-card .panel{min-height:0;padding-top:0}
+body.cinema-theme .cinema-card .panel[hidden]{display:block!important}
+body.cinema-theme .queue-item,body.cinema-theme .member{border-color:#2d281f;padding:9px 0}
+body.cinema-theme .queue-item .number{color:#d8ba66}
+body.cinema-theme .queue-item button,body.cinema-theme .member button{background:#181510;border-color:#3d3426}
+body.cinema-theme .add-form{margin:12px 0 8px;flex-wrap:wrap}
+body.cinema-theme .add-form input{width:100%;font-size:10px}
+body.cinema-theme .add-form button{width:100%;background:#211b11;border-color:#5c4c2d;color:#edd79b}
+body.cinema-theme #pollForm{display:grid;grid-template-columns:1fr;gap:7px}
+body.cinema-theme #pollForm input{width:100%}
+body.cinema-theme #pollForm button{background:#211b11;color:#ecd691;border-color:#5c4c2d}
+
+body.cinema-theme .cinema-social-card{display:flex;flex-direction:column;gap:12px}
+body.cinema-theme .cinema-social-card #emoji{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:0}
+body.cinema-theme .cinema-social-card #emoji button{font-size:21px;background:radial-gradient(circle at 35% 30%,#2b2419,#17130f);border:1px solid #443a2a;border-radius:50%;aspect-ratio:1;padding:0}
+body.cinema-theme .cinema-invite-actions{display:grid;gap:7px;margin-top:auto}
+body.cinema-theme .cinema-invite-actions #invite{background:linear-gradient(135deg,#eed583,#bea04f);color:#21190e;border-color:#e7c76d;font-weight:700}
+body.cinema-theme .cinema-invite-actions #leave{color:#c7bdb0;background:#120f0d}
+body.cinema-theme .cinema-quote{font-family:'Playfair Display',serif;font-size:18px;line-height:1.15;color:#e9d49d;margin:4px 0 0}
+body.cinema-theme .cinema-quote small{display:block;font-family:'DM Sans',sans-serif;color:#7f7567;font-size:9px;letter-spacing:.1em;text-transform:uppercase;margin-top:8px}
+
+body.cinema-theme .chat{border-radius:16px;min-height:650px;max-height:calc(100vh - 104px);position:sticky;top:84px}
+body.cinema-theme .chat-heading{border-color:#30291e;padding:15px 16px}
+body.cinema-theme .chat-heading h3{font-family:'Playfair Display',serif;color:#f2dda4;font-size:18px}
+body.cinema-theme .live{color:#e2c56d}
+body.cinema-theme .chat-note{color:#7f7668}
+body.cinema-theme .message b{color:#dfc573}
+body.cinema-theme .chat form{border-color:#2f291f}
+body.cinema-theme .chat form button{background:#d9bd69;color:#1c160c}
+
+body.cinema-theme .live-call{margin:0;border:0;background:transparent;padding:0}
+body.cinema-theme .live-call-head{display:block}
+body.cinema-theme .live-call-head strong{display:block;font-family:'Playfair Display',serif;color:#f1dfad;font-size:15px;margin:0 0 9px}
+body.cinema-theme .call-controls{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+body.cinema-theme .call-controls button{padding:7px 6px;font-size:9px;background:#17130f;border-color:#3b3225}
+body.cinema-theme .call-controls button.active{background:#d9bd69;color:#20190d;border-color:#e7c76d}
+body.cinema-theme .rtc-grid,body.cinema-theme .rtc-grid.cinema{display:grid!important;grid-template-columns:1fr!important;gap:8px;margin-top:10px}
+body.cinema-theme .rtc-tile{border-color:#4a3c27;border-radius:11px;min-height:128px;aspect-ratio:16/10}
+body.cinema-theme .rtc-tile.spotlight{grid-column:auto;grid-row:auto;border-color:#e7c76d;box-shadow:0 0 0 1px rgba(231,199,109,.25)}
+body.cinema-theme .rtc-label{background:#0d0b08dc;border-color:#6a5734;color:#f1e5c6}
+body.cinema-theme .rtc-badge{background:#0d0b08dc;border-color:#5c4a2c}
+body.cinema-theme .rtc-screen-zone h4{color:#b9a77b}
+body.cinema-theme .screen-share-grid{grid-template-columns:1fr}
+body.cinema-theme #people{padding:12px 0 0;border-top:1px solid rgba(231,199,109,.12);margin-top:12px}
+body.cinema-theme #people[hidden]{display:block!important}
+
+body.cinema-theme #discover{padding-top:42px}
+body.cinema-theme .film-grid{grid-template-columns:repeat(4,1fr)}
+body.cinema-theme .poster{border:1px solid #423724;box-shadow:0 12px 32px #0005}
+body.cinema-theme .poster button{background:#e7c76d;color:#1f180d}
+body.cinema-theme #genres button.active{background:#e7c76d;color:#1f180d}
+body.cinema-theme .setup{border-color:#2f291f}
+body.cinema-theme .footer{border-color:#2f291f;color:#756c60}
+
+body.cinema-theme .poll-card{background:#13100c!important;border-color:#3d3325!important}
+body.cinema-theme .poll-head h3{font-family:'Playfair Display',serif;color:#f1dfa9}
+body.cinema-theme .poll-option{background:#181510!important;border-color:#3c3325!important}
+body.cinema-theme .poll-option.selected{border-color:#e7c76d!important;box-shadow:0 0 0 1px rgba(231,199,109,.2) inset!important}
+body.cinema-theme .poll-bar{background:rgba(231,199,109,.16)!important}
+body.cinema-theme .poll-selected-tag{color:#e7c76d!important}
+body.cinema-theme .poll-option .poll-stat{color:#d5c18b!important}
+
+@media(max-width:1180px){
+  body.cinema-theme .room-grid.cinema-shell{grid-template-columns:220px minmax(0,1fr)}
+  body.cinema-theme .chat{grid-column:1/-1;position:relative;top:auto;max-height:520px;min-height:420px}
+  body.cinema-theme .cinema-rail{top:78px}
+  body.cinema-theme .cinema-dashboard{grid-template-columns:1fr 1fr}
+  body.cinema-theme .cinema-social-card{grid-column:1/-1}
+}
+@media(max-width:760px){
+  body.cinema-theme header{padding:13px 5%}
+  body.cinema-theme nav{display:none}
+  body.cinema-theme main{padding-left:4%;padding-right:4%}
+  body.cinema-theme .room-grid.cinema-shell{grid-template-columns:1fr}
+  body.cinema-theme .cinema-center{order:1}
+  body.cinema-theme .cinema-rail{order:2;position:relative;top:auto;max-height:none}
+  body.cinema-theme .chat{order:3}
+  body.cinema-theme .cinema-dashboard{grid-template-columns:1fr}
+  body.cinema-theme .cinema-social-card{grid-column:auto}
+  body.cinema-theme .film-grid{grid-template-columns:repeat(2,1fr)}
+  body.cinema-theme .screen{border-radius:12px 12px 0 0}
+  body.cinema-theme .player-bar{border-radius:0 0 12px 12px}
+}
